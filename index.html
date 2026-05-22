@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiBe Puzzle Game</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts untuk font yang lucu dan ramah anak -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@300..700&family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', 'Nunito', sans-serif;
+            background-color: #f0f9ff;
+        }
+        /* Custom drag & drop styles */
+        .puzzle-piece {
+            cursor: grab;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .puzzle-piece:active {
+            cursor: grabbing;
+            transform: scale(1.05);
+        }
+        .correct-placement {
+            animation: celebrate 0.5s ease;
+        }
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); filter: brightness(1.2); }
+            100% { transform: scale(1); }
+        }
+        /* Flower offering animation */
+        @keyframes offerFlower {
+            0% { transform: scale(1) rotate(0deg); }
+            30% { transform: scale(1.25) rotate(15deg) translate(-10px, -10px); }
+            70% { transform: scale(1.25) rotate(-10deg) translate(-10px, -10px); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        .bear-give-flower {
+            animation: offerFlower 1.5s ease-in-out;
+        }
+        .heart-bubble {
+            animation: floatUp 1.2s ease-out forwards;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(10px) scale(0.5); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateY(-40px) scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden text-slate-800">
+
+    <!-- HEADER / HERO SCREEN -->
+    <header id="welcome-screen" class="flex-grow flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto w-full transition-all duration-500">
+        <!-- Logo Beruang Putih Memegang Bunga -->
+        <div class="relative w-48 h-48 md:w-56 md:h-56 mb-6 drop-shadow-xl hover:scale-105 transition-transform duration-300">
+            <!-- SVG Beruang Putih Memegang Bunga -->
+            <svg id="main-bear-logo" viewBox="0 0 200 200" class="w-full h-full">
+                <!-- Telinga -->
+                <circle cx="65" cy="65" r="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                <circle cx="65" cy="65" r="12" fill="#FED7AA" />
+                <circle cx="135" cy="65" r="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                <circle cx="135" cy="65" r="12" fill="#FED7AA" />
+                
+                <!-- Badan Belakang / Lengan Kiri -->
+                <ellipse cx="65" cy="140" rx="18" ry="30" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" transform="rotate(-30 65 140)" />
+
+                <!-- Kepala -->
+                <circle cx="100" cy="100" r="48" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                
+                <!-- Mata -->
+                <circle cx="82" cy="90" r="5" fill="#1E293B" />
+                <circle cx="118" cy="90" r="5" fill="#1E293B" />
+                <!-- Kilau Mata -->
+                <circle cx="80.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                <circle cx="116.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                
+                <!-- Pipi Merona -->
+                <ellipse cx="73" cy="99" rx="7" ry="4" fill="#FCA5A5" opacity="0.6" />
+                <ellipse cx="127" cy="99" rx="7" ry="4" fill="#FCA5A5" opacity="0.6" />
+
+                <!-- Moncong & Hidung -->
+                <ellipse cx="100" cy="103" rx="14" ry="10" fill="#F1F5F9" />
+                <polygon points="95,100 105,100 100,105" fill="#334155" />
+                <!-- Mulut Senyum -->
+                <path d="M 96,107 Q 100,111 104,107" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" />
+
+                <!-- Tangan Kanan Memegang Bunga -->
+                <ellipse cx="135" cy="135" rx="16" ry="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" transform="rotate(35 135 135)" />
+                
+                <!-- Bunga Indah di Tangan Beruang -->
+                <g id="flower-group" class="transition-transform duration-300 origin-[140px_120px]">
+                    <!-- Tangkai -->
+                    <path d="M 140,120 Q 148,105 152,95" fill="none" stroke="#22C55E" stroke-width="4" stroke-linecap="round" />
+                    <!-- Daun -->
+                    <path d="M 145,110 Q 153,112 150,117 Z" fill="#22C55E" />
+                    <!-- Kelopak Bunga (Bunga Pink/Kuning) -->
+                    <circle cx="152" cy="85" r="7" fill="#F43F5E" />
+                    <circle cx="162" cy="92" r="7" fill="#F43F5E" />
+                    <circle cx="160" cy="102" r="7" fill="#F43F5E" />
+                    <circle cx="148" cy="100" r="7" fill="#F43F5E" />
+                    <circle cx="144" cy="91" r="7" fill="#F43F5E" />
+                    <!-- Putik Tengah -->
+                    <circle cx="153" cy="94" r="6" fill="#FBBF24" />
+                </g>
+            </svg>
+            <div id="heart-spawner" class="absolute inset-0 pointer-events-none"></div>
+        </div>
+
+        <h1 class="text-6xl font-black text-rose-500 tracking-wider mb-2 drop-shadow-sm">LiBe</h1>
+        <p class="text-lg text-slate-500 font-medium max-w-md mb-8">
+            Mainkan game puzzle edukatif bersama Beruang Putih yang lucu! Cocokkan potongan gambar untuk mendapatkan hadiah bunga spesial!
+        </p>
+
+        <!-- Tombol "Mulai" Utama -->
+        <button onclick="goToSetup()" class="px-10 py-5 bg-gradient-to-r from-rose-400 to-pink-500 text-white font-bold text-2xl rounded-full shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-3 animate-bounce">
+            <span>Mulai Bermain</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" />
+            </svg>
+        </button>
+    </header>
+
+    <!-- SETUP SCREEN (TINGKAT KESULITAN & PILIHAN PUZZLE) -->
+    <main id="setup-screen" class="hidden flex-grow max-w-5xl mx-auto w-full p-4 md:p-8 transition-all duration-500">
+        <div class="bg-white rounded-3xl shadow-xl p-6 md:p-10 border border-pink-100">
+            <h2 class="text-3xl font-bold text-center text-slate-700 mb-8 flex items-center justify-center gap-2">
+                🎨 Atur Petualangan Puzzle-mu
+            </h2>
+
+            <!-- PILIHAN TINGKAT KESULITAN -->
+            <div class="mb-8">
+                <p class="text-lg font-bold text-slate-600 mb-3 text-center md:text-left">🐾 Pilih Tingkat Kesulitan:</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="selectDifficulty('easy')" id="btn-easy" class="difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-green-100">
+                        Easy <span class="block text-xs font-normal">(3 × 3 Grid)</span>
+                    </button>
+                    <button onclick="selectDifficulty('medium')" id="btn-medium" class="difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-amber-200 bg-white text-slate-600 hover:bg-amber-50 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-amber-100">
+                        Medium <span class="block text-xs font-normal">(4 × 4 Grid)</span>
+                    </button>
+                    <button onclick="selectDifficulty('hard')" id="btn-hard" class="difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-red-200 bg-white text-slate-600 hover:bg-red-50 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-red-100">
+                        Hard <span class="block text-xs font-normal">(5 × 5 Grid)</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- PILIHAN KATEGORI PUZZLE -->
+            <div class="mb-8">
+                <p class="text-lg font-bold text-slate-600 mb-3 text-center md:text-left">🧩 Pilih Kategori Gambar:</p>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                    <!-- Kategori 1: Hewan -->
+                    <button onclick="selectCategory(1)" id="cat-1" class="category-btn p-4 rounded-2xl border-2 bg-pink-50 border-pink-400 text-pink-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🦁</span>
+                        <span class="text-center">Hewan</span>
+                    </button>
+                    <!-- Kategori 2: Bunga -->
+                    <button onclick="selectCategory(2)" id="cat-2" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🌹</span>
+                        <span class="text-center">Bunga</span>
+                    </button>
+                    <!-- Kategori 3: Tumbuhan Liar -->
+                    <button onclick="selectCategory(3)" id="cat-3" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🌿</span>
+                        <span class="text-center text-xs">Tumbuhan Liar</span>
+                    </button>
+                    <!-- Kategori 4: Burung -->
+                    <button onclick="selectCategory(4)" id="cat-4" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🦜</span>
+                        <span class="text-center">Burung</span>
+                    </button>
+                    <!-- Kategori 5: Tubuh Manusia -->
+                    <button onclick="selectCategory(5)" id="cat-5" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🧠</span>
+                        <span class="text-center text-xs">Tubuh Manusia</span>
+                    </button>
+                    <!-- Kategori 6: Anak-anak -->
+                    <button onclick="selectCategory(6)" id="cat-6" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🧒</span>
+                        <span class="text-center">Anak-anak</span>
+                    </button>
+                    <!-- Kategori 7: Bangunan -->
+                    <button onclick="selectCategory(7)" id="cat-7" class="category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm">
+                        <span class="text-3xl">🏰</span>
+                        <span class="text-center">Bangunan</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview Gambar terpilih -->
+            <div class="mb-8 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Preview Gambar Puzzle</p>
+                <div class="w-48 h-48 border-4 border-white shadow-md rounded-xl overflow-hidden bg-white flex items-center justify-center" id="setup-preview-container">
+                    <!-- Gambar Preview akan dirender di sini via JS -->
+                </div>
+                <p id="preview-title" class="text-lg font-bold text-slate-700 mt-2">Puzzle Hewan (Singa)</p>
+            </div>
+
+            <!-- Tombol Mulai Fitur Game -->
+            <div class="flex flex-col sm:flex-row gap-4 justify-center mt-6">
+                <button onclick="backToHome()" class="px-6 py-4 bg-slate-200 text-slate-600 font-bold rounded-2xl hover:bg-slate-300 active:scale-95 transition-all duration-200">
+                    Kembali
+                </button>
+                <button onclick="startGame()" class="px-10 py-4 bg-rose-500 text-white font-bold text-xl rounded-2xl shadow-md hover:bg-rose-600 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2">
+                    <span>Mulai Menyusun!</span> 🚀
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- GAMEPLAY SCREEN -->
+    <main id="gameplay-screen" class="hidden flex-grow max-w-6xl mx-auto w-full p-4 md:p-6 transition-all duration-500">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Sisi Kiri: Panel Info Game & Maskot Beruang Pemberi Bunga -->
+            <div class="lg:col-span-4 flex flex-col gap-6">
+                <!-- Panel Stats -->
+                <div class="bg-white rounded-3xl p-5 shadow-md border border-rose-50 flex justify-between items-center">
+                    <div>
+                        <p class="text-xs font-bold text-slate-400 uppercase">Kategori</p>
+                        <p id="game-cat-name" class="text-lg font-bold text-slate-700">Puzzle Hewan</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs font-bold text-slate-400 uppercase">Kesulitan</p>
+                        <span id="game-difficulty-badge" class="px-3 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-full">Easy</span>
+                    </div>
+                </div>
+
+                <!-- Live Maskot Beruang Putih yang responsif terhadap game -->
+                <div class="bg-white rounded-3xl p-6 shadow-md border border-rose-50 flex flex-col items-center relative overflow-hidden">
+                    <p class="text-sm text-center font-bold text-slate-500 mb-3 bg-rose-50 px-3 py-1.5 rounded-full">
+                        🐻 Teman Bermainmu: <span class="text-rose-500">LiBe</span>
+                    </p>
+                    
+                    <div class="relative w-44 h-44 drop-shadow-md">
+                        <!-- SVG Bear untuk Gameplay yang interaktif -->
+                        <svg id="gameplace-bear-svg" viewBox="0 0 200 200" class="w-full h-full">
+                            <!-- Telinga -->
+                            <circle cx="65" cy="65" r="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                            <circle cx="65" cy="65" r="12" fill="#FED7AA" />
+                            <circle cx="135" cy="65" r="22" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                            <circle cx="135" cy="65" r="12" fill="#FED7AA" />
+                            
+                            <!-- Badan Belakang / Lengan Kiri -->
+                            <ellipse cx="65" cy="140" rx="18" ry="30" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" transform="rotate(-30 65 140)" />
+
+                            <!-- Kepala -->
+                            <circle cx="100" cy="100" r="48" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" />
+                            
+                            <!-- Mata (Gembira/Berubah saat benar) -->
+                            <g id="game-bear-eyes">
+                                <circle cx="82" cy="90" r="5" fill="#1E293B" />
+                                <circle cx="118" cy="90" r="5" fill="#1E293B" />
+                                <circle cx="80.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                                <circle cx="116.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                            </g>
+                            
+                            <!-- Pipi Merona -->
+                            <ellipse cx="73" cy="99" rx="7" ry="4" fill="#FCA5A5" opacity="0.6" />
+                            <ellipse cx="127" cy="99" rx="7" ry="4" fill="#FCA5A5" opacity="0.6" />
+
+                            <!-- Moncong & Hidung -->
+                            <ellipse cx="100" cy="103" rx="14" ry="10" fill="#F1F5F9" />
+                            <polygon points="95,100 105,100 100,105" fill="#334155" />
+                            <path d="M 96,107 Q 100,111 104,107" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" />
+
+                            <!-- Tangan Kanan Memegang Bunga -->
+                            <ellipse cx="135" cy="135" rx="16" ry="24" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="3" transform="rotate(35 135 135)" />
+                            
+                            <!-- Bunga Spesial yang akan disodorkan -->
+                            <g id="gameplay-flower" class="origin-[140px_120px]">
+                                <path d="M 140,120 Q 148,105 152,95" fill="none" stroke="#22C55E" stroke-width="4" stroke-linecap="round" />
+                                <path d="M 145,110 Q 153,112 150,117 Z" fill="#22C55E" />
+                                <circle cx="152" cy="85" r="7" fill="#F43F5E" />
+                                <circle cx="162" cy="92" r="7" fill="#F43F5E" />
+                                <circle cx="160" cy="102" r="7" fill="#F43F5E" />
+                                <circle cx="148" cy="100" r="7" fill="#F43F5E" />
+                                <circle cx="144" cy="91" r="7" fill="#F43F5E" />
+                                <circle cx="153" cy="94" r="6" fill="#FBBF24" />
+                            </g>
+                        </svg>
+                        <div id="game-heart-spawner" class="absolute inset-0 pointer-events-none"></div>
+                    </div>
+                    
+                    <!-- Balon Dialog Interaktif -->
+                    <div class="mt-4 bg-rose-50 border border-rose-100 p-3 rounded-2xl text-center shadow-inner w-full">
+                        <p id="bear-bubble-text" class="text-sm font-bold text-rose-600">
+                            "Letakkan kepingan puzzle pertamamu!" 🌸
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Panduan Mini -->
+                <div class="bg-white rounded-3xl p-5 shadow-md border border-slate-100 hidden md:block">
+                    <p class="text-sm font-bold text-slate-500 mb-2">💡 Tips Bermain:</p>
+                    <ul class="text-xs text-slate-500 space-y-1.5 list-disc list-inside">
+                        <li>Geser (Drag) kepingan dari kolam puzzle di sebelah kanan.</li>
+                        <li>Letakkan (Drop) pada area bergaris putus-putus yang sesuai.</li>
+                        <li>Cocokkan bentuk dan detil gambar!</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Sisi Kanan: Area Papan Grid & Kolam Kepingan Puzzle -->
+            <div class="lg:col-span-8 flex flex-col gap-6">
+                <!-- Header Atas Papan -->
+                <div class="bg-white rounded-3xl p-4 shadow-md border border-slate-100 flex flex-wrap justify-between items-center gap-4">
+                    <div class="flex items-center gap-3">
+                        <button onclick="backToSetup()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm transition-all">
+                            ⚙️ Ubah Aturan
+                        </button>
+                    </div>
+                    <!-- Skor/Progress -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm font-bold text-slate-500">Kesesuaian:</span>
+                        <div class="w-32 bg-slate-100 h-4 rounded-full overflow-hidden border border-slate-200">
+                            <div id="game-progress-bar" class="bg-gradient-to-r from-rose-400 to-pink-500 h-full transition-all duration-300" style="width: 0%"></div>
+                        </div>
+                        <span id="game-progress-text" class="text-sm font-bold text-rose-500">0%</span>
+                    </div>
+                </div>
+
+                <!-- LAYOUT UTAMA: PAPAN GRID & KEPINGAN -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                    
+                    <!-- Papan Target (Dropzone) -->
+                    <div class="flex flex-col items-center">
+                        <p class="text-sm font-bold text-slate-400 uppercase mb-2">Tujuan Papan Puzzle</p>
+                        <div class="bg-slate-100 rounded-3xl p-3 border-4 border-dashed border-slate-300 shadow-inner flex items-center justify-center">
+                            <!-- Tempat Rendering Board -->
+                            <div id="puzzle-board" class="grid bg-slate-200 relative overflow-hidden rounded-2xl" style="width: 320px; height: 320px;">
+                                <!-- Area ini akan diisi slot grid target secara dinamis -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Kolam Kepingan Puzzle (Dragzone) -->
+                    <div class="flex flex-col items-center">
+                        <p class="text-sm font-bold text-slate-400 uppercase mb-2">Kepingan Puzzle</p>
+                        <div class="bg-white rounded-3xl p-5 border border-slate-100 shadow-md w-full min-h-[352px] flex flex-wrap items-center justify-center gap-3 content-start" id="pieces-container">
+                            <!-- Kepingan puzzle teracak akan ditaruh di sini -->
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- SUCCESS / CELEBRATION MODAL -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-8 text-center shadow-2xl border border-pink-100 transform scale-95 transition-transform duration-300">
+            <!-- Emoticon/Icon Berhasil -->
+            <div class="w-24 h-24 bg-rose-50 text-rose-500 rounded-full flex items-center justify-center text-5xl mx-auto mb-4 border border-rose-100 shadow-inner animate-bounce">
+                🌸
+            </div>
+            <h3 class="text-3xl font-black text-rose-500 mb-2">Luar Biasa!</h3>
+            <p class="text-slate-600 mb-6">
+                Kamu berhasil menyelesaikan puzzle ini dengan sangat baik. LiBe sangat senang dan memberikanmu bunga yang indah! 🐻🌹
+            </p>
+
+            <div class="bg-pink-50 rounded-2xl p-4 mb-6 border border-pink-100">
+                <p class="text-xs font-bold text-pink-400 uppercase tracking-widest mb-1">Hadiah dari LiBe</p>
+                <p class="text-lg font-bold text-slate-700">1 Bunga Kebahagiaan 🌸</p>
+            </div>
+
+            <!-- Tombol Aksi -->
+            <div class="flex flex-col gap-2">
+                <button onclick="restartGame()" class="w-full py-4 bg-gradient-to-r from-rose-400 to-pink-500 text-white font-bold rounded-2xl shadow hover:opacity-90 active:scale-95 transition-all">
+                    Main Lagi!
+                </button>
+                <button onclick="backToSetup()" class="w-full py-3 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all">
+                    Pilih Puzzle Lain
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER / KREDIT -->
+    <footer class="w-full p-4 mt-6 flex flex-col sm:flex-row justify-between items-center text-xs text-slate-400 border-t border-slate-100 bg-white/50">
+        <div>
+            <span>&copy; 2026 Game Puzzle <strong>LiBe</strong>. All Rights Reserved.</span>
+        </div>
+        <div class="mt-2 sm:mt-0 font-semibold bg-rose-50 text-rose-500 px-3 py-1 rounded-full border border-rose-100">
+            Dibuat oleh: <span id="author-credit">Shonia Dimara</span>
+        </div>
+    </footer>
+
+    <!-- JAVASCRIPT GAME LOGIC -->
+    <script>
+        // CONFIG & STATE GAME
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'libe-puzzle-id';
+        
+        let currentDifficulty = 'easy'; // Default difficulty
+        let currentCategory = 1;       // Default category (Hewan)
+        let gridSize = 3;              // Grid dimensi (3x3, 4x4, 5x5)
+        let totalPieces = 9;
+        
+        // Track posisi kepingan puzzle
+        let solvedCount = 0;
+        let isGameFinished = false;
+
+        // Kategori Data & Representasi Gambar Nyata (Menggunakan foto real Unsplash dengan cadangan anti-gagal)
+        const categories = {
+            1: {
+                title: "Puzzle Hewan (Singa)",
+                emoji: "🦁",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1546182990-dffeafbe841d?w=500&h=500&fit=crop', size, 'Singa Nyata')
+            },
+            2: {
+                title: "Puzzle Bunga (Matahari)",
+                emoji: "🌹",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1597848212624-a19eb35e2651?w=500&h=500&fit=crop', size, 'Bunga Matahari Nyata')
+            },
+            3: {
+                title: "Puzzle Tumbuhan Liar",
+                emoji: "🌿",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1448375240586-882707db888b?w=500&h=500&fit=crop', size, 'Tumbuhan Liar Nyata')
+            },
+            4: {
+                title: "Puzzle Burung (Flamingo)",
+                emoji: "🦜",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1510525983-c4a727a99b02?w=500&h=500&fit=crop', size, 'Burung Flamingo Nyata')
+            },
+            5: {
+                title: "Puzzle Tubuh Manusia (Jantung)",
+                emoji: "🧠",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1559757175-5700dde675bc?w=500&h=500&fit=crop', size, 'Jantung Anatomi Nyata')
+            },
+            6: {
+                title: "Puzzle Anak-anak (Balon Udara)",
+                emoji: "🧒",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1530841377377-3ff06c0ca713?w=500&h=500&fit=crop', size, 'Balon Udara Nyata')
+            },
+            7: {
+                title: "Puzzle Bangunan (Kastil)",
+                emoji: "🏰",
+                imgGenerator: (size) => getRealImageHTML('https://images.unsplash.com/photo-1508849789987-4e5333c12b78?w=500&h=500&fit=crop', size, 'Kastil Nyata')
+            }
+        };
+
+        // PESAN MOTIVASI BERUANG
+        const bearMessages = [
+            "Kamu pintar sekali! Teruskan ya! ⭐",
+            "Wah! Pas banget posisinya! 🎯",
+            "Hebat! Gambar ini mulai kelihatan! 🧩",
+            "Tinggal sedikit lagi! Semangat! 💪",
+            "Kerja bagus! Beruang bangga padamu! 🐻",
+            "Sempurna! Kamu hebat menyusun puzzle! 🌟"
+        ];
+
+        // LOAD / INIT ON STARTUP
+        window.onload = function() {
+            // Render default preview di setup screen
+            renderSetupPreview();
+        };
+
+        // NAVIGASI SCREEN
+        function goToSetup() {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
+
+        function backToHome() {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('welcome-screen').classList.remove('hidden');
+        }
+
+        function backToSetup() {
+            document.getElementById('gameplay-screen').classList.add('hidden');
+            document.getElementById('success-modal').classList.add('hidden');
+            document.getElementById('setup-screen').classList.remove('hidden');
+        }
+
+        // AKSI SETUP
+        function selectDifficulty(diff) {
+            currentDifficulty = diff;
+            
+            // Ubah Grid Size berdasarkan tingkat kesulitan
+            if (diff === 'easy') gridSize = 3;
+            else if (diff === 'medium') gridSize = 4;
+            else if (diff === 'hard') gridSize = 5;
+            
+            totalPieces = gridSize * gridSize;
+
+            // Reset UI class tombol
+            document.querySelectorAll('.difficulty-btn').forEach(btn => {
+                btn.className = "difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 bg-white text-slate-600 hover:bg-slate-50 transition-all duration-300 shadow-sm focus:ring-4";
+            });
+
+            const activeBtn = document.getElementById(`btn-${diff}`);
+            if (diff === 'easy') {
+                activeBtn.className = "difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-green-200 bg-green-50 text-green-700 hover:bg-green-100 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-green-100";
+            } else if (diff === 'medium') {
+                activeBtn.className = "difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-amber-100";
+            } else {
+                activeBtn.className = "difficulty-btn py-4 rounded-2xl font-bold text-lg border-2 border-red-200 bg-red-50 text-red-700 hover:bg-red-100 transition-all duration-300 shadow-sm focus:ring-4 focus:ring-red-100";
+            }
+        }
+
+        function selectCategory(id) {
+            currentCategory = id;
+            
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.className = "category-btn p-4 rounded-2xl border-2 bg-white border-slate-100 text-slate-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm";
+            });
+
+            const activeCat = document.getElementById(`cat-${id}`);
+            activeCat.className = "category-btn p-4 rounded-2xl border-2 bg-pink-50 border-pink-400 text-pink-600 font-bold text-sm flex flex-col items-center justify-center gap-2 hover:scale-105 transition-all duration-200 shadow-sm";
+
+            renderSetupPreview();
+        }
+
+        function renderSetupPreview() {
+            const container = document.getElementById('setup-preview-container');
+            const cat = categories[currentCategory];
+            container.innerHTML = cat.imgGenerator(192); // Preview size 192px
+            document.getElementById('preview-title').textContent = cat.title;
+        }
+
+        // LOGIKA GAMEPLAY & GENERATE PUZZLE
+        function startGame() {
+            // Ganti Screen
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('gameplay-screen').classList.remove('hidden');
+
+            // Setup Info Panel
+            document.getElementById('game-cat-name').textContent = categories[currentCategory].title;
+            const diffBadge = document.getElementById('game-difficulty-badge');
+            diffBadge.textContent = currentDifficulty.toUpperCase();
+            
+            // Atur warna badge
+            if (currentDifficulty === 'easy') {
+                diffBadge.className = "px-3 py-1 bg-green-100 text-green-700 text-sm font-bold rounded-full";
+            } else if (currentDifficulty === 'medium') {
+                diffBadge.className = "px-3 py-1 bg-amber-100 text-amber-700 text-sm font-bold rounded-full";
+            } else {
+                diffBadge.className = "px-3 py-1 bg-red-100 text-red-700 text-sm font-bold rounded-full";
+            }
+
+            // Reset State Gameplay
+            solvedCount = 0;
+            isGameFinished = false;
+            updateProgressBar();
+            
+            // Set Bear normal eye state
+            setBearEyes('normal');
+            setBearBubbleText("Ayo kita susun gambarnya bersama-sama! 🌸");
+
+            // BUAT PUZZLE
+            setupPuzzleBoard();
+        }
+
+        function restartGame() {
+            document.getElementById('success-modal').classList.add('hidden');
+            startGame();
+        }
+
+        // SETUP BOARD & KEPINGAN
+        function setupPuzzleBoard() {
+            const board = document.getElementById('puzzle-board');
+            const piecesContainer = document.getElementById('pieces-container');
+            
+            board.innerHTML = '';
+            piecesContainer.innerHTML = '';
+
+            // Set grid template style dynamically
+            board.style.gridTemplateColumns = `repeat(${gridSize}, 1fr)`;
+            board.style.gridTemplateRows = `repeat(${gridSize}, 1fr)`;
+
+            const boardSize = 320; // Ukuran board konstan 320px
+            const stepSize = boardSize / gridSize;
+
+            // Dapatkan gambar terpilih
+            const imageSource = categories[currentCategory].imgGenerator(boardSize);
+
+            // Buat kepingan-kepingan
+            let piecesData = [];
+
+            for (let r = 0; r < gridSize; r++) {
+                for (let c = 0; c < gridSize; c++) {
+                    const index = r * gridSize + c;
+                    
+                    // 1. Buat Dropzone Slot di Board
+                    const targetSlot = document.createElement('div');
+                    targetSlot.className = "border border-slate-300 border-dashed relative transition-colors duration-200 flex items-center justify-center";
+                    targetSlot.dataset.row = r;
+                    targetSlot.dataset.col = c;
+                    targetSlot.dataset.index = index;
+                    
+                    // Supaya drop target bisa menerima elemen yang di-drag
+                    targetSlot.addEventListener('dragover', dragOver);
+                    targetSlot.addEventListener('dragleave', dragLeave);
+                    targetSlot.addEventListener('drop', dropPiece);
+                    
+                    board.appendChild(targetSlot);
+
+                    // 2. Buat Elemen Kepingan Puzzle dengan pergeseran porsi gambar agar presisi
+                    const piece = document.createElement('div');
+                    piece.className = "puzzle-piece bg-white border border-slate-200 rounded-lg shadow-md overflow-hidden relative select-none";
+                    piece.style.width = `${stepSize - 6}px`;
+                    piece.style.height = `${stepSize - 6}px`;
+                    piece.draggable = true;
+                    piece.dataset.correctIndex = index;
+                    piece.id = `piece-${index}`;
+
+                    const pieceInner = document.createElement('div');
+                    pieceInner.style.width = `${boardSize}px`;
+                    pieceInner.style.height = `${boardSize}px`;
+                    pieceInner.style.transform = `translate(-${c * stepSize}px, -${r * stepSize}px)`;
+                    pieceInner.style.position = 'absolute';
+                    pieceInner.style.top = '0';
+                    pieceInner.style.left = '0';
+                    pieceInner.innerHTML = imageSource;
+
+                    piece.appendChild(pieceInner);
+
+                    // Event drag kepingan
+                    piece.addEventListener('dragstart', dragStart);
+                    piece.addEventListener('dragend', dragEnd);
+
+                    // Support Touch devices (Mobile friendly)
+                    setupTouchEvents(piece);
+
+                    piecesData.push(piece);
+                }
+            }
+
+            // Acak urutan kepingan
+            piecesData.sort(() => Math.random() - 0.5);
+
+            // Masukkan kepingan teracak ke kolam penampungan
+            piecesData.forEach(piece => {
+                piecesContainer.appendChild(piece);
+            });
+        }
+
+        // DRAG & DROP LOGIC (MOUSE)
+        let draggedPiece = null;
+
+        function dragStart(e) {
+            draggedPiece = this;
+            setTimeout(() => {
+                this.classList.add('opacity-40');
+            }, 0);
+        }
+
+        function dragEnd() {
+            this.classList.remove('opacity-40');
+            draggedPiece = null;
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+            this.classList.add('bg-rose-100', 'border-rose-300');
+        }
+
+        function dragLeave() {
+            this.classList.remove('bg-rose-100', 'border-rose-300');
+        }
+
+        function dropPiece(e) {
+            e.preventDefault();
+            this.classList.remove('bg-rose-100', 'border-rose-300');
+            
+            const targetIndex = this.dataset.index;
+            const pieceCorrectIndex = draggedPiece.dataset.correctIndex;
+
+            // Cek apakah ditaruh di slot kosong & index-nya benar
+            if (targetIndex === pieceCorrectIndex && this.children.length === 0) {
+                placeCorrectPiece(this, draggedPiece);
+            } else {
+                // Beritahu Beruang jika salah tempat
+                triggerBearReaction(false);
+            }
+        }
+
+        // TOUCH DEVICE HANDLERS
+        function setupTouchEvents(piece) {
+            let startX, startY;
+            let initialLeft, initialTop;
+            
+            piece.addEventListener('touchstart', function(e) {
+                if (piece.classList.contains('placed-correctly')) return;
+                
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                
+                // Set gaya penarikan/float
+                piece.style.position = 'fixed';
+                piece.style.zIndex = '100';
+                
+                // Tempatkan persis di bawah jari
+                const rect = piece.getBoundingClientRect();
+                piece.style.left = `${rect.left}px`;
+                piece.style.top = `${rect.top}px`;
+                
+                initialLeft = rect.left;
+                initialTop = rect.top;
+            }, { passive: true });
+
+            piece.addEventListener('touchmove', function(e) {
+                if (piece.classList.contains('placed-correctly')) return;
+                
+                const touch = e.touches[0];
+                const dx = touch.clientX - startX;
+                const dy = touch.clientY - startY;
+                
+                piece.style.left = `${initialLeft + dx}px`;
+                piece.style.top = `${initialTop + dy}px`;
+            }, { passive: true });
+
+            piece.addEventListener('touchend', function(e) {
+                if (piece.classList.contains('placed-correctly')) return;
+                
+                // Cari elemen di posisi jari lepas
+                piece.style.display = 'none'; // Sembunyikan sebentar agar elementFromPoint bisa mendeteksi di bawahnya
+                const touch = e.changedTouches[0];
+                const elementUnder = document.elementFromPoint(touch.clientX, touch.clientY);
+                piece.style.display = 'block'; // Tampilkan kembali
+                
+                piece.style.position = '';
+                piece.style.zIndex = '';
+                piece.style.left = '';
+                piece.style.top = '';
+
+                if (elementUnder) {
+                    // Cari slot target terdekat (bisa slot atau bagian dari grid target)
+                    const targetSlot = elementUnder.closest('[data-index]');
+                    if (targetSlot) {
+                        const targetIndex = targetSlot.dataset.index;
+                        const pieceCorrectIndex = piece.dataset.correctIndex;
+
+                        if (targetIndex === pieceCorrectIndex && targetSlot.children.length === 0) {
+                            placeCorrectPiece(targetSlot, piece);
+                            return;
+                        }
+                    }
+                }
+                
+                // Jika tidak berhasil ditaruh di tempat yang benar
+                triggerBearReaction(false);
+            });
+        }
+
+        // KETIKA KEPINGAN DILETAKKAN DENGAN BENAR
+        function placeCorrectPiece(slot, piece) {
+            // Set status kepingan
+            piece.classList.add('placed-correctly', 'correct-placement');
+            piece.draggable = false;
+            
+            // Sesuaikan ukuran agar pas di dalam grid target
+            piece.style.width = '100%';
+            piece.style.height = '100%';
+            piece.style.border = 'none';
+            piece.style.borderRadius = '0px';
+            piece.style.shadow = 'none';
+
+            slot.appendChild(piece);
+            
+            solvedCount++;
+            updateProgressBar();
+
+            // Interaksi Menyenangkan: Beruang memberikan bunga & merespon gembira
+            triggerBearReaction(true);
+
+            // Cek Kemenangan
+            if (solvedCount === totalPieces) {
+                finishGame();
+            }
+        }
+
+        // UPDATE PROGRESS BAR
+        function updateProgressBar() {
+            const percent = Math.round((solvedCount / totalPieces) * 100);
+            document.getElementById('game-progress-bar').style.width = `${percent}%`;
+            document.getElementById('game-progress-text').textContent = `${percent}%`;
+        }
+
+        // REAKSI INTERAKTIF BERUANG (MEMBERIKAN BUNGA / LOVE / CHAT DIALOG)
+        function triggerBearReaction(isCorrect) {
+            const logoSvg = document.getElementById('gameplace-bear-svg');
+            const flower = document.getElementById('gameplay-flower');
+            
+            if (isCorrect) {
+                // 1. Ubah ekspresi mata Beruang menjadi gembira (lengkungan senyum)
+                setBearEyes('happy');
+
+                // 2. Animasi Beruang menyodorkan Bunga (skala membesar & bergerak)
+                flower.classList.add('bear-give-flower');
+                
+                // 3. Spawns Efek Love/Hati melayang
+                spawnHearts();
+
+                // 4. Ubah teks pesan Beruang
+                const randomMsg = bearMessages[Math.floor(Math.random() * bearMessages.length)];
+                setBearBubbleText(randomMsg);
+
+                // Kembalikan ke normal setelah animasi selesai (1.5 detik)
+                setTimeout(() => {
+                    flower.classList.remove('bear-give-flower');
+                    if (!isGameFinished) {
+                        setBearEyes('normal');
+                    }
+                }, 1500);
+
+            } else {
+                // Jika salah meletakkan
+                setBearEyes('sad');
+                setBearBubbleText("Oops! Bukan di situ tempatnya, coba cari lagi ya! 🧩");
+                
+                setTimeout(() => {
+                    if (!isGameFinished) {
+                        setBearEyes('normal');
+                    }
+                }, 1200);
+            }
+        }
+
+        function setBearEyes(state) {
+            const eyesGroup = document.getElementById('game-bear-eyes');
+            if (state === 'happy') {
+                // Gunakan lengkungan melengkung gembira
+                eyesGroup.innerHTML = `
+                    <path d="M 77,92 Q 82,85 87,92" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" />
+                    <path d="M 113,92 Q 118,85 123,92" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" />
+                `;
+            } else if (state === 'sad') {
+                // Mata sedikit mengantuk atau sedih
+                eyesGroup.innerHTML = `
+                    <path d="M 77,88 Q 82,93 87,88" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" />
+                    <path d="M 113,88 Q 118,93 123,88" fill="none" stroke="#1E293B" stroke-width="3" stroke-linecap="round" />
+                `;
+            } else {
+                // Mata Bulat Hitam Normal Berkilau
+                eyesGroup.innerHTML = `
+                    <circle cx="82" cy="90" r="5" fill="#1E293B" />
+                    <circle cx="118" cy="90" r="5" fill="#1E293B" />
+                    <circle cx="80.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                    <circle cx="116.5" cy="88.5" r="1.5" fill="#FFFFFF" />
+                `;
+            }
+        }
+
+        function setBearBubbleText(text) {
+            document.getElementById('bear-bubble-text').textContent = text;
+        }
+
+        // GENERATOR EFEK HATI MELAYANG
+        function spawnHearts() {
+            const spawner = document.getElementById('game-heart-spawner');
+            const numHearts = 4;
+            
+            for (let i = 0; i < numHearts; i++) {
+                const heart = document.createElement('div');
+                heart.className = "heart-bubble absolute text-rose-500 font-bold select-none pointer-events-none";
+                heart.textContent = "🌸";
+                
+                // Posisi random dekat bunga/tangan kanan beruang (sekitar x: 140, y: 100)
+                const leftOffset = 110 + Math.random() * 50;
+                const topOffset = 80 + Math.random() * 40;
+                
+                heart.style.left = `${leftOffset}px`;
+                heart.style.top = `${topOffset}px`;
+                heart.style.fontSize = `${14 + Math.random() * 12}px`;
+                
+                spawner.appendChild(heart);
+
+                // Hapus setelah selesai animasi
+                setTimeout(() => {
+                    heart.remove();
+                }, 1200);
+            }
+        }
+
+        // KETIKA PUZZLE SELESAI
+        function finishGame() {
+            isGameFinished = true;
+            setBearEyes('happy');
+            setBearBubbleText("Hore! Kamu hebat sekali! Ini bunga spesial untukmu! 🐻🌹");
+            
+            // Buka Modal Sukses
+            setTimeout(() => {
+                document.getElementById('success-modal').classList.remove('hidden');
+                document.getElementById('success-modal').firstElementChild.classList.remove('scale-95');
+                document.getElementById('success-modal').firstElementChild.classList.add('scale-100');
+            }, 1000);
+        }
+
+        // --- GENERATOR GAMBAR NYATA (HIGH QUALITY & ROBUST FALLBACK) ---
+        function getRealImageHTML(url, size, altText) {
+            // Gunakan SVG berwarna manis sebagai cadangan anti-gagal jika terjadi gangguan jaringan saat memuat foto Unsplash
+            const fallbackSVG = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='320'><rect width='100%' height='100%' fill='%23FCE7F3'/><text x='50%' y='50%' font-family='sans-serif' font-weight='bold' font-size='20' fill='%23EC4899' dy='.3em' text-anchor='middle'>Puzzle ${altText}</text></svg>`;
+            return `<img src="${url}" alt="${altText}" width="${size}" height="${size}" class="w-full h-full object-cover select-none pointer-events-none" onerror="this.onerror=null; this.src=&quot;${fallbackSVG}&quot;;" />`;
+        }
+    </script>
+</body>
+</html>
